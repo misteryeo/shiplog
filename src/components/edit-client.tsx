@@ -1,0 +1,168 @@
+"use client";
+
+import type { Feature } from "@prisma/client";
+import { useMemo, useState } from "react";
+
+import {
+  buildBatchDraft,
+  buildIndividualDraft,
+  type DraftMode,
+  type Tone,
+} from "@/lib/posts/templates";
+
+type EditClientProps = {
+  features: Feature[];
+  mode: DraftMode;
+  tone: Tone;
+};
+
+export function EditClient({ features, mode, tone }: EditClientProps) {
+  const initialBatch = useMemo(() => buildBatchDraft(features, tone), [features, tone]);
+  const initialIndividual = useMemo(
+    () =>
+      Object.fromEntries(
+        features.map((feature) => [feature.id, buildIndividualDraft(feature, tone)]),
+      ),
+    [features, tone],
+  );
+
+  const [batchDraft, setBatchDraft] = useState(initialBatch);
+  const [individualDrafts, setIndividualDrafts] = useState<Record<string, string>>(
+    initialIndividual,
+  );
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [copied, setCopied] = useState(false);
+
+  const currentFeature = features[currentIndex];
+
+  async function copyText(text: string) {
+    await navigator.clipboard.writeText(text);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1200);
+  }
+
+  if (mode === "batch") {
+    return (
+      <div className="mx-auto max-w-4xl space-y-4 py-8">
+        <div className="flex items-center justify-between">
+          <h1 className="text-2xl font-semibold text-stone-900">Edit draft</h1>
+          <span className="rounded-md border border-stone-300 px-2 py-1 text-xs capitalize text-stone-600">
+            {tone}
+          </span>
+        </div>
+
+        <textarea
+          value={batchDraft}
+          onChange={(event) => setBatchDraft(event.target.value)}
+          className="h-[420px] w-full rounded-xl border border-stone-300 bg-white p-4 text-sm text-stone-900"
+        />
+
+        <div className="flex items-center justify-between">
+          <span className="text-xs text-stone-500">{batchDraft.length} characters</span>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={() => setBatchDraft(initialBatch)}
+              className="rounded-md border border-stone-300 px-3 py-2 text-sm text-stone-700"
+            >
+              Regenerate
+            </button>
+            <button
+              type="button"
+              onClick={() => copyText(batchDraft)}
+              className="rounded-md bg-stone-900 px-3 py-2 text-sm text-stone-50"
+            >
+              {copied ? "Copied" : "Copy to clipboard"}
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (!currentFeature) {
+    return <p className="py-8 text-sm text-stone-600">No features selected.</p>;
+  }
+
+  return (
+    <div className="mx-auto max-w-4xl space-y-4 py-8">
+      <div className="flex items-center justify-between">
+        <h1 className="text-2xl font-semibold text-stone-900">Edit drafts</h1>
+        <span className="rounded-md border border-stone-300 px-2 py-1 text-xs capitalize text-stone-600">
+          {tone}
+        </span>
+      </div>
+
+      <div className="flex flex-wrap gap-2">
+        {features.map((feature, index) => (
+          <button
+            key={feature.id}
+            type="button"
+            onClick={() => setCurrentIndex(index)}
+            className={`rounded-md px-3 py-1 text-xs font-mono ${
+              index === currentIndex
+                ? "bg-stone-900 text-stone-50"
+                : "border border-stone-300 text-stone-700"
+            }`}
+          >
+            {feature.identifier}
+          </button>
+        ))}
+      </div>
+
+      <textarea
+        value={individualDrafts[currentFeature.id] ?? ""}
+        onChange={(event) =>
+          setIndividualDrafts((current) => ({
+            ...current,
+            [currentFeature.id]: event.target.value,
+          }))
+        }
+        className="h-[420px] w-full rounded-xl border border-stone-300 bg-white p-4 text-sm text-stone-900"
+      />
+
+      <div className="flex items-center justify-between">
+        <div className="flex gap-2">
+          <button
+            type="button"
+            onClick={() => setCurrentIndex((value) => Math.max(0, value - 1))}
+            disabled={currentIndex === 0}
+            className="rounded-md border border-stone-300 px-3 py-2 text-sm text-stone-700 disabled:opacity-40"
+          >
+            Previous
+          </button>
+          <button
+            type="button"
+            onClick={() => setCurrentIndex((value) => Math.min(features.length - 1, value + 1))}
+            disabled={currentIndex >= features.length - 1}
+            className="rounded-md border border-stone-300 px-3 py-2 text-sm text-stone-700 disabled:opacity-40"
+          >
+            Next
+          </button>
+        </div>
+
+        <div className="flex gap-2">
+          <button
+            type="button"
+            onClick={() =>
+              setIndividualDrafts((current) => ({
+                ...current,
+                [currentFeature.id]: buildIndividualDraft(currentFeature, tone),
+              }))
+            }
+            className="rounded-md border border-stone-300 px-3 py-2 text-sm text-stone-700"
+          >
+            Regenerate
+          </button>
+          <button
+            type="button"
+            onClick={() => copyText(individualDrafts[currentFeature.id] ?? "")}
+            className="rounded-md bg-stone-900 px-3 py-2 text-sm text-stone-50"
+          >
+            {copied ? "Copied" : "Copy to clipboard"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
