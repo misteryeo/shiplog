@@ -86,20 +86,25 @@ model Connection {
 }
 
 model Feature {
-  id            String   @id @default(cuid())
-  userId        String
-  connectionId  String
-  linearIssueId String
-  identifier    String
-  title         String
-  url           String
-  description   String?
-  completedAt   DateTime
-  prData        Json?
-  pulledAt      DateTime @default(now())
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id                    String   @id @default(cuid())
+  userId                String
+  connectionId          String
+  linearIssueId         String
+  identifier            String
+  title                 String
+  url                   String
+  description           String?
+  completedAt           DateTime
+  prData                Json?
+  notionPageId          String?
+  notionPageTitle       String?
+  notionPageUrl         String?
+  notionMatchConfidence String?
+  notionExcerpt         String?
+  pulledAt              DateTime @default(now())
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+  user                  User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   connection    Connection @relation(fields: [connectionId], references: [id], onDelete: Cascade)
 
   @@unique([userId, linearIssueId])

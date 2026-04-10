@@ -21,13 +21,21 @@ export default async function ReviewPage({ searchParams }: ReviewPageProps) {
     redirect("/onboarding");
   }
 
-  const [user, linearConnection] = await Promise.all([
+  const [user, linearConnection, notionConnection] = await Promise.all([
     prisma.user.findUnique({ where: { id: session.user.id } }),
     prisma.connection.findUnique({
       where: {
         userId_provider: {
           userId: session.user.id,
           provider: ConnectionProvider.LINEAR,
+        },
+      },
+    }),
+    prisma.connection.findUnique({
+      where: {
+        userId_provider: {
+          userId: session.user.id,
+          provider: ConnectionProvider.NOTION,
         },
       },
     }),
@@ -48,6 +56,7 @@ export default async function ReviewPage({ searchParams }: ReviewPageProps) {
         initialFeatures={features}
         initialStartDate={startDate}
         initialEndDate={endDate}
+        notionConnected={Boolean(notionConnection)}
       />
     </main>
   );

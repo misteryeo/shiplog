@@ -41,6 +41,9 @@ export default async function RootLayout({
   const linearConnected = Boolean(
     user?.connections.find((connection) => connection.provider === ConnectionProvider.LINEAR),
   );
+  const notionConnected = Boolean(
+    user?.connections.find((connection) => connection.provider === ConnectionProvider.NOTION),
+  );
 
   return (
     <html lang="en">
@@ -51,6 +54,7 @@ export default async function RootLayout({
           showSettings={Boolean(session?.user?.id)}
           cadence={user?.cadence}
           linearConnected={linearConnected}
+          notionConnected={notionConnected}
         />
         {children}
       </body>

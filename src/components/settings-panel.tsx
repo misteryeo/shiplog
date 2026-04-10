@@ -2,15 +2,20 @@
 
 import { Cadence } from "@prisma/client";
 import { useRouter } from "next/navigation";
-import { signOut } from "next-auth/react";
+import { signIn, signOut } from "next-auth/react";
 import { useState } from "react";
 
 type SettingsPanelProps = {
   cadence: Cadence;
   linearConnected: boolean;
+  notionConnected: boolean;
 };
 
-export function SettingsPanel({ cadence, linearConnected }: SettingsPanelProps) {
+export function SettingsPanel({
+  cadence,
+  linearConnected,
+  notionConnected,
+}: SettingsPanelProps) {
   const [open, setOpen] = useState(false);
   const [selectedCadence, setSelectedCadence] = useState<Cadence>(cadence);
   const [saving, setSaving] = useState(false);
@@ -34,8 +39,26 @@ export function SettingsPanel({ cadence, linearConnected }: SettingsPanelProps) 
   async function disconnectLinear() {
     setSaving(true);
     try {
-      await fetch("/api/settings/disconnect", { method: "POST" });
+      await fetch("/api/settings/disconnect", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ provider: "LINEAR" }),
+      });
       await signOut({ callbackUrl: "/onboarding" });
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function disconnectNotion() {
+    setSaving(true);
+    try {
+      await fetch("/api/settings/disconnect", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ provider: "NOTION" }),
+      });
+      router.refresh();
     } finally {
       setSaving(false);
     }
@@ -83,7 +106,30 @@ export function SettingsPanel({ cadence, linearConnected }: SettingsPanelProps) 
                     </button>
                   ) : null}
                 </div>
-                <p className="text-xs text-stone-500">Notion: Coming soon</p>
+                <div className="mt-2 flex items-center justify-between">
+                  <span className="text-sm text-stone-700">
+                    Notion: {notionConnected ? "Connected" : "Disconnected"}
+                  </span>
+                  {notionConnected ? (
+                    <button
+                      type="button"
+                      onClick={disconnectNotion}
+                      disabled={saving}
+                      className="rounded-md border border-stone-300 px-2 py-1 text-xs text-stone-700 disabled:opacity-50"
+                    >
+                      Disconnect
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => signIn("notion", { callbackUrl: "/review" })}
+                      disabled={saving}
+                      className="rounded-md border border-stone-300 px-2 py-1 text-xs text-stone-700 disabled:opacity-50"
+                    >
+                      Connect
+                    </button>
+                  )}
+                </div>
               </section>
 
               <section className="space-y-2 rounded-xl border border-stone-200 bg-white p-4">

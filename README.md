@@ -1,11 +1,11 @@
 # ShipLog
 
-ShipLog turns shipped Linear work into reviewable feature summaries and LinkedIn-ready draft posts.
+ShipLog turns shipped work into reviewable feature summaries and LinkedIn-ready draft posts.
 
-This repository now includes Phase 1 foundations:
+This repository now includes Phase 1 plus initial Phase 2 integration:
 
 - Next.js 14 (App Router) + TypeScript + Tailwind
-- NextAuth with Linear OAuth provider wiring
+- NextAuth with Linear + Notion OAuth provider wiring
 - Prisma schema for users, connections, sessions, and cached features
 - Review -> Generate -> Edit flow with template-based draft generation
 
@@ -14,6 +14,7 @@ This repository now includes Phase 1 foundations:
 - Node.js 20+
 - PostgreSQL (local or hosted)
 - Linear OAuth app (scope: `read`)
+- Notion OAuth app (read content)
 
 ## 2) Environment variables
 
@@ -30,6 +31,8 @@ Required vars:
 - `NEXTAUTH_SECRET`
 - `LINEAR_CLIENT_ID`
 - `LINEAR_CLIENT_SECRET`
+- `NOTION_CLIENT_ID`
+- `NOTION_CLIENT_SECRET`
 
 ## 3) Install and initialize database
 
@@ -49,8 +52,8 @@ Then open [http://localhost:3000](http://localhost:3000).
 
 ## Current Phase 1 routes
 
-- `/onboarding` - connect Linear + choose cadence
-- `/review` - pick date range, refresh from Linear, review/select features
+- `/onboarding` - connect Linear/Notion + choose cadence
+- `/review` - pick date range, refresh from Linear, review/select features, swap PRD matches
 - `/generate` - choose output mode and tone label
 - `/edit` - edit/copy generated draft(s)
 

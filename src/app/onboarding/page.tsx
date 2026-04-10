@@ -11,18 +11,30 @@ export default async function OnboardingPage() {
   if (!session?.user?.id) {
     return (
       <main className="mx-auto max-w-3xl px-4">
-        <OnboardingClient linearConnected={false} currentCadence="WEEKLY" />
+        <OnboardingClient
+          linearConnected={false}
+          notionConnected={false}
+          currentCadence="WEEKLY"
+        />
       </main>
     );
   }
 
-  const [user, linearConnection] = await Promise.all([
+  const [user, linearConnection, notionConnection] = await Promise.all([
     prisma.user.findUnique({ where: { id: session.user.id } }),
     prisma.connection.findUnique({
       where: {
         userId_provider: {
           userId: session.user.id,
           provider: ConnectionProvider.LINEAR,
+        },
+      },
+    }),
+    prisma.connection.findUnique({
+      where: {
+        userId_provider: {
+          userId: session.user.id,
+          provider: ConnectionProvider.NOTION,
         },
       },
     }),
@@ -36,6 +48,7 @@ export default async function OnboardingPage() {
     <main className="mx-auto max-w-3xl px-4">
       <OnboardingClient
         linearConnected={Boolean(linearConnection)}
+        notionConnected={Boolean(notionConnection)}
         currentCadence={user?.cadence ?? "WEEKLY"}
       />
     </main>
