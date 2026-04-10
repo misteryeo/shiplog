@@ -4,6 +4,7 @@ import type { NextAuthOptions } from "next-auth";
 import NextAuth from "next-auth";
 
 import { LinearProvider } from "@/lib/auth/linear-provider";
+import { NotionProvider } from "@/lib/auth/notion-provider";
 import { prisma } from "@/lib/prisma";
 
 export const authOptions: NextAuthOptions = {
@@ -19,6 +20,10 @@ export const authOptions: NextAuthOptions = {
       clientId: process.env.LINEAR_CLIENT_ID ?? "",
       clientSecret: process.env.LINEAR_CLIENT_SECRET ?? "",
     }),
+    NotionProvider({
+      clientId: process.env.NOTION_CLIENT_ID ?? "",
+      clientSecret: process.env.NOTION_CLIENT_SECRET ?? "",
+    }),
   ],
   callbacks: {
     async session({ session, user }) {
@@ -28,7 +33,18 @@ export const authOptions: NextAuthOptions = {
       return session;
     },
     async signIn({ account, user }) {
-      if (!account || account.provider !== "linear") {
+      if (!account) {
+        return true;
+      }
+
+      const provider =
+        account.provider === "linear"
+          ? ConnectionProvider.LINEAR
+          : account.provider === "notion"
+            ? ConnectionProvider.NOTION
+            : null;
+
+      if (!provider) {
         return true;
       }
 
@@ -36,15 +52,15 @@ export const authOptions: NextAuthOptions = {
         where: {
           userId_provider: {
             userId: user.id,
-            provider: ConnectionProvider.LINEAR,
+            provider,
           },
         },
         create: {
           userId: user.id,
-          provider: ConnectionProvider.LINEAR,
+          provider,
           accessToken: account.access_token ?? "",
           refreshToken: account.refresh_token ?? null,
-          scope: account.scope ?? "read",
+          scope: account.scope ?? undefined,
           expiresAt: account.expires_at
             ? new Date(account.expires_at * 1000)
             : null,
@@ -52,7 +68,7 @@ export const authOptions: NextAuthOptions = {
         update: {
           accessToken: account.access_token ?? "",
           refreshToken: account.refresh_token ?? null,
-          scope: account.scope ?? "read",
+          scope: account.scope ?? undefined,
           expiresAt: account.expires_at
             ? new Date(account.expires_at * 1000)
             : null,

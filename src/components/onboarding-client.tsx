@@ -7,10 +7,15 @@ import { useState } from "react";
 
 type OnboardingClientProps = {
   linearConnected: boolean;
+  notionConnected: boolean;
   currentCadence: Cadence;
 };
 
-export function OnboardingClient({ linearConnected, currentCadence }: OnboardingClientProps) {
+export function OnboardingClient({
+  linearConnected,
+  notionConnected,
+  currentCadence,
+}: OnboardingClientProps) {
   const [step, setStep] = useState(linearConnected ? 2 : 1);
   const [cadence, setCadence] = useState<Cadence>(currentCadence);
   const [saving, setSaving] = useState(false);
@@ -54,10 +59,16 @@ export function OnboardingClient({ linearConnected, currentCadence }: Onboarding
                 {linearConnected ? "Connected" : "Connect with read scope"}
               </p>
             </button>
-            <div className="rounded-lg border border-dashed border-stone-300 bg-stone-100 px-4 py-3 text-left">
-              <p className="text-sm font-medium text-stone-700">Notion</p>
-              <p className="text-xs text-stone-500">Coming in Phase 2</p>
-            </div>
+            <button
+              type="button"
+              onClick={() => signIn("notion", { callbackUrl: "/onboarding" })}
+              className="rounded-lg border border-stone-300 px-4 py-3 text-left hover:bg-stone-100"
+            >
+              <p className="text-sm font-medium text-stone-900">Notion</p>
+              <p className="text-xs text-stone-600">
+                {notionConnected ? "Connected" : "Connect for PRD matching"}
+              </p>
+            </button>
           </div>
           <div className="mt-6 flex justify-end">
             <button
