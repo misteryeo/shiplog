@@ -12,8 +12,22 @@ export const authOptions: NextAuthOptions = {
   session: {
     strategy: "database",
   },
+  logger: {
+    error(code, metadata) {
+      console.error("[NextAuth]", code, metadata);
+    },
+    warn(code) {
+      console.warn("[NextAuth]", code);
+    },
+    debug(code, metadata) {
+      if (process.env.NEXTAUTH_DEBUG === "true") {
+        console.log("[NextAuth]", code, metadata);
+      }
+    },
+  },
   pages: {
     signIn: "/onboarding",
+    error: "/auth/error",
   },
   providers: [
     LinearProvider({
@@ -48,32 +62,40 @@ export const authOptions: NextAuthOptions = {
         return true;
       }
 
-      await prisma.connection.upsert({
-        where: {
-          userId_provider: {
+      try {
+        await prisma.connection.upsert({
+          where: {
+            userId_provider: {
+              userId: user.id,
+              provider,
+            },
+          },
+          create: {
             userId: user.id,
             provider,
+            accessToken: account.access_token ?? "",
+            refreshToken: account.refresh_token ?? null,
+            scope: account.scope ?? undefined,
+            expiresAt: account.expires_at
+              ? new Date(account.expires_at * 1000)
+              : null,
           },
-        },
-        create: {
-          userId: user.id,
-          provider,
-          accessToken: account.access_token ?? "",
-          refreshToken: account.refresh_token ?? null,
-          scope: account.scope ?? undefined,
-          expiresAt: account.expires_at
-            ? new Date(account.expires_at * 1000)
-            : null,
-        },
-        update: {
-          accessToken: account.access_token ?? "",
-          refreshToken: account.refresh_token ?? null,
-          scope: account.scope ?? undefined,
-          expiresAt: account.expires_at
-            ? new Date(account.expires_at * 1000)
-            : null,
-        },
-      });
+          update: {
+            accessToken: account.access_token ?? "",
+            refreshToken: account.refresh_token ?? null,
+            scope: account.scope ?? undefined,
+            expiresAt: account.expires_at
+              ? new Date(account.expires_at * 1000)
+              : null,
+          },
+        });
+      } catch (error) {
+        console.error(
+          "[NextAuth] Failed to persist OAuth connection (check DATABASE_URL and prisma db push):",
+          error,
+        );
+        throw error;
+      }
 
       return true;
     },

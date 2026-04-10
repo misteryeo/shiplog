@@ -57,6 +57,15 @@ Then open [http://localhost:3000](http://localhost:3000).
 - `/generate` - choose output mode and tone label
 - `/edit` - edit/copy generated draft(s)
 
+## Troubleshooting OAuth
+
+If sign-in finishes at `/api/auth/callback/...` and does not return to the app:
+
+1. Confirm Postgres is running and `DATABASE_URL` in `.env.local` is correct, then run `npm run prisma:push` (NextAuth needs the Prisma tables to create users and sessions).
+2. Set `NEXTAUTH_URL` to the exact origin you use in the browser (for example `http://localhost:3000`) and set a strong `NEXTAUTH_SECRET`. Restart `npm run dev` after any env change.
+3. Add `NEXTAUTH_DEBUG="true"` to `.env.local` and watch the terminal while reproducing; you should see `[NextAuth]` logs.
+4. On failure, NextAuth redirects to `/auth/error?error=...` with a short code (for example `OAuthCallback` or `Configuration`).
+
 ## Notes
 
 - The app caches pulled Linear issues in `Feature` rows so the review screen reads from DB.
