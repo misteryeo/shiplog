@@ -12,8 +12,22 @@ export const authOptions: NextAuthOptions = {
   session: {
     strategy: "database",
   },
+  logger: {
+    error(code, metadata) {
+      console.error("[NextAuth]", code, metadata);
+    },
+    warn(code) {
+      console.warn("[NextAuth]", code);
+    },
+    debug(code, metadata) {
+      if (process.env.NEXTAUTH_DEBUG === "true") {
+        console.log("[NextAuth]", code, metadata);
+      }
+    },
+  },
   pages: {
     signIn: "/onboarding",
+    error: "/auth/error",
   },
   providers: [
     LinearProvider({
@@ -32,9 +46,12 @@ export const authOptions: NextAuthOptions = {
       }
       return session;
     },
-    async signIn({ account, user }) {
-      if (!account) {
-        return true;
+  },
+  events: {
+    // Run after the adapter has persisted User + Account (avoids Connection_userId_fkey on first sign-in).
+    async signIn({ user, account }) {
+      if (!account?.provider || !account.providerAccountId) {
+        return;
       }
 
       const provider =
@@ -45,37 +62,64 @@ export const authOptions: NextAuthOptions = {
             : null;
 
       if (!provider) {
-        return true;
+        return;
       }
 
-      await prisma.connection.upsert({
-        where: {
-          userId_provider: {
-            userId: user.id,
-            provider,
+      try {
+        const persistedAccount = await prisma.account.findUnique({
+          where: {
+            provider_providerAccountId: {
+              provider: account.provider,
+              providerAccountId: account.providerAccountId,
+            },
           },
-        },
-        create: {
-          userId: user.id,
-          provider,
-          accessToken: account.access_token ?? "",
-          refreshToken: account.refresh_token ?? null,
-          scope: account.scope ?? undefined,
-          expiresAt: account.expires_at
-            ? new Date(account.expires_at * 1000)
-            : null,
-        },
-        update: {
-          accessToken: account.access_token ?? "",
-          refreshToken: account.refresh_token ?? null,
-          scope: account.scope ?? undefined,
-          expiresAt: account.expires_at
-            ? new Date(account.expires_at * 1000)
-            : null,
-        },
-      });
+          select: {
+            userId: true,
+          },
+        });
 
-      return true;
+        const resolvedUserId = persistedAccount?.userId ?? user?.id;
+        if (!resolvedUserId) {
+          console.error(
+            "[NextAuth] Could not resolve userId for OAuth token persistence.",
+            { provider: account.provider, providerAccountId: account.providerAccountId },
+          );
+          return;
+        }
+
+        await prisma.connection.upsert({
+          where: {
+            userId_provider: {
+              userId: resolvedUserId,
+              provider,
+            },
+          },
+          create: {
+            userId: resolvedUserId,
+            provider,
+            accessToken: account.access_token ?? "",
+            refreshToken: account.refresh_token ?? null,
+            scope: account.scope ?? undefined,
+            expiresAt: account.expires_at
+              ? new Date(account.expires_at * 1000)
+              : null,
+          },
+          update: {
+            accessToken: account.access_token ?? "",
+            refreshToken: account.refresh_token ?? null,
+            scope: account.scope ?? undefined,
+            expiresAt: account.expires_at
+              ? new Date(account.expires_at * 1000)
+              : null,
+          },
+        });
+      } catch (error) {
+        // Do not rethrow: NextAuth may put the message on a redirect URL and break Headers (newlines).
+        console.error(
+          "[NextAuth] Failed to persist OAuth tokens to Connection (user may need to sign in again):",
+          error,
+        );
+      }
     },
   },
 };

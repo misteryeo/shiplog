@@ -3,7 +3,7 @@
 import { Cadence } from "@prisma/client";
 import { useRouter } from "next/navigation";
 import { signIn } from "next-auth/react";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 type OnboardingClientProps = {
   linearConnected: boolean;
@@ -20,6 +20,21 @@ export function OnboardingClient({
   const [cadence, setCadence] = useState<Cadence>(currentCadence);
   const [saving, setSaving] = useState(false);
   const router = useRouter();
+  const previousLinearConnected = useRef(linearConnected);
+
+  // After OAuth redirect, RSC payload can be one tick stale — refresh so Connection rows load.
+  useEffect(() => {
+    router.refresh();
+  }, [router]);
+
+  // When Linear first shows as connected (props update after OAuth), advance to cadence step.
+  // Do not run when user chose "Back" from step 2 while already connected.
+  useEffect(() => {
+    if (!previousLinearConnected.current && linearConnected) {
+      setStep(2);
+    }
+    previousLinearConnected.current = linearConnected;
+  }, [linearConnected]);
 
   async function completeOnboarding() {
     setSaving(true);
@@ -70,7 +85,10 @@ export function OnboardingClient({
               </p>
             </button>
           </div>
-          <div className="mt-6 flex justify-end">
+          <div className="mt-6 flex flex-col items-end gap-2">
+            <p className="max-w-md text-right text-xs text-stone-500">
+              Linear is required to pull shipped issues. Notion is optional for PRD matching.
+            </p>
             <button
               type="button"
               onClick={() => setStep(2)}
