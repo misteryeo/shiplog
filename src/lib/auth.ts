@@ -46,9 +46,12 @@ export const authOptions: NextAuthOptions = {
       }
       return session;
     },
-    async signIn({ account, user }) {
-      if (!account) {
-        return true;
+  },
+  events: {
+    // Run after the adapter has persisted User + Account (avoids Connection_userId_fkey on first sign-in).
+    async signIn({ user, account }) {
+      if (!account?.provider || !user?.id) {
+        return;
       }
 
       const provider =
@@ -59,7 +62,7 @@ export const authOptions: NextAuthOptions = {
             : null;
 
       if (!provider) {
-        return true;
+        return;
       }
 
       try {
@@ -90,14 +93,12 @@ export const authOptions: NextAuthOptions = {
           },
         });
       } catch (error) {
+        // Do not rethrow: NextAuth may put the message on a redirect URL and break Headers (newlines).
         console.error(
-          "[NextAuth] Failed to persist OAuth connection (check DATABASE_URL and prisma db push):",
+          "[NextAuth] Failed to persist OAuth tokens to Connection (user may need to sign in again):",
           error,
         );
-        throw error;
       }
-
-      return true;
     },
   },
 };
