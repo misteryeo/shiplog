@@ -50,7 +50,7 @@ export const authOptions: NextAuthOptions = {
   events: {
     // Run after the adapter has persisted User + Account (avoids Connection_userId_fkey on first sign-in).
     async signIn({ user, account }) {
-      if (!account?.provider || !user?.id) {
+      if (!account?.provider || !account.providerAccountId) {
         return;
       }
 
@@ -66,15 +66,36 @@ export const authOptions: NextAuthOptions = {
       }
 
       try {
+        const persistedAccount = await prisma.account.findUnique({
+          where: {
+            provider_providerAccountId: {
+              provider: account.provider,
+              providerAccountId: account.providerAccountId,
+            },
+          },
+          select: {
+            userId: true,
+          },
+        });
+
+        const resolvedUserId = persistedAccount?.userId ?? user?.id;
+        if (!resolvedUserId) {
+          console.error(
+            "[NextAuth] Could not resolve userId for OAuth token persistence.",
+            { provider: account.provider, providerAccountId: account.providerAccountId },
+          );
+          return;
+        }
+
         await prisma.connection.upsert({
           where: {
             userId_provider: {
-              userId: user.id,
+              userId: resolvedUserId,
               provider,
             },
           },
           create: {
-            userId: user.id,
+            userId: resolvedUserId,
             provider,
             accessToken: account.access_token ?? "",
             refreshToken: account.refresh_token ?? null,
