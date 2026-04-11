@@ -36,11 +36,15 @@ Required vars:
 
 ## 3) Install and initialize database
 
+Create an empty database (example name: `shiplog`), then:
+
 ```bash
 npm install
 npm run prisma:generate
 npm run prisma:push
 ```
+
+**Homebrew PostgreSQL on macOS:** there is usually no `postgres` / `postgres` user. Use your macOS username and no password in `DATABASE_URL`, for example `postgresql://you@localhost:5432/shiplog`. The Docker-style `postgres:postgres` URL only matches a Postgres image you configured that way.
 
 ## 4) Run locally
 
