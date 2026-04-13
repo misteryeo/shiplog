@@ -6,7 +6,14 @@ import { OnboardingClient } from "@/components/onboarding-client";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
-export default async function OnboardingPage() {
+type OnboardingPageProps = {
+  searchParams?: {
+    error?: string;
+  };
+};
+
+export default async function OnboardingPage({ searchParams }: OnboardingPageProps) {
+  const authError = searchParams?.error;
   const session = await getServerSession(authOptions);
   if (!session?.user?.id) {
     return (
@@ -15,6 +22,7 @@ export default async function OnboardingPage() {
           linearConnected={false}
           notionConnected={false}
           currentCadence="WEEKLY"
+          authError={authError}
         />
       </main>
     );
@@ -50,6 +58,7 @@ export default async function OnboardingPage() {
         linearConnected={Boolean(linearConnection)}
         notionConnected={Boolean(notionConnection)}
         currentCadence={user?.cadence ?? "WEEKLY"}
+        authError={authError}
       />
     </main>
   );

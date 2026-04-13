@@ -52,7 +52,7 @@ export type LinearIssue = {
 };
 
 const issuesQuery = `
-  query ShippedIssues($first: Int!, $after: String, $completedAtGte: DateTime!, $completedAtLte: DateTime!) {
+  query ShippedIssues($first: Int!, $after: String, $completedAtGte: DateTimeOrDuration!, $completedAtLte: DateTimeOrDuration!) {
     issues(
       first: $first
       after: $after
@@ -99,11 +99,13 @@ async function linearGraphQL<T>(token: string, query: string, variables: Record<
     cache: "no-store",
   });
 
+  const rawBody = await response.text();
+
   if (!response.ok) {
-    throw new Error(`Linear request failed: ${response.status}`);
+    throw new Error(`Linear request failed: ${response.status} - ${rawBody}`);
   }
 
-  const payload = (await response.json()) as LinearGraphQLResponse<T>;
+  const payload = JSON.parse(rawBody) as LinearGraphQLResponse<T>;
   if (payload.errors?.length) {
     throw new Error(payload.errors[0].message ?? "Linear query failed");
   }

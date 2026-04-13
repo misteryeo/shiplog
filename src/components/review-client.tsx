@@ -40,6 +40,7 @@ export function ReviewClient({
   const [startDate, setStartDate] = useState(initialStartDate);
   const [endDate, setEndDate] = useState(initialEndDate);
   const [syncing, setSyncing] = useState(false);
+  const [syncError, setSyncError] = useState<string | null>(null);
   const [searching, setSearching] = useState(false);
   const [swapFeature, setSwapFeature] = useState<Feature | null>(null);
   const [swapQuery, setSwapQuery] = useState("");
@@ -64,6 +65,7 @@ export function ReviewClient({
 
   async function refresh() {
     setSyncing(true);
+    setSyncError(null);
     try {
       const response = await fetch("/api/linear/sync", {
         method: "POST",
@@ -75,6 +77,10 @@ export function ReviewClient({
       });
 
       if (!response.ok) {
+        const payload = (await response.json().catch(() => null)) as
+          | { error?: string }
+          | null;
+        setSyncError(payload?.error ?? "Refresh failed. Please try again.");
         return;
       }
 
@@ -198,6 +204,11 @@ export function ReviewClient({
             {allSelected ? "Deselect all" : "Select all"}
           </button>
         </div>
+        {syncError ? (
+          <p className="mt-3 rounded-md border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">
+            {syncError}
+          </p>
+        ) : null}
       </section>
 
       <section className="space-y-3">
