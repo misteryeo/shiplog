@@ -7,6 +7,19 @@ import { LinearProvider } from "@/lib/auth/linear-provider";
 import { NotionProvider } from "@/lib/auth/notion-provider";
 import { prisma } from "@/lib/prisma";
 
+const DEFAULT_ACCOUNT_FIELDS = new Set([
+  "provider",
+  "type",
+  "providerAccountId",
+  "refresh_token",
+  "access_token",
+  "expires_at",
+  "token_type",
+  "scope",
+  "id_token",
+  "session_state",
+]);
+
 export const authOptions: NextAuthOptions = {
   adapter: PrismaAdapter(prisma),
   session: {
@@ -40,6 +53,20 @@ export const authOptions: NextAuthOptions = {
     }),
   ],
   callbacks: {
+    async signIn({ account }) {
+      // Notion returns many non-standard token fields.
+      // Prisma Account schema follows NextAuth defaults, so strip unknown fields
+      // before adapter.linkAccount persists this object.
+      if (account?.provider === "notion") {
+        const mutableAccount = account as Record<string, unknown>;
+        Object.keys(mutableAccount).forEach((key) => {
+          if (!DEFAULT_ACCOUNT_FIELDS.has(key)) {
+            delete mutableAccount[key];
+          }
+        });
+      }
+      return true;
+    },
     async session({ session, user }) {
       if (session.user) {
         session.user.id = user.id;

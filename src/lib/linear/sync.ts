@@ -10,6 +10,45 @@ type SyncInput = {
   endDate: string;
 };
 
+async function refreshLinearAccessToken(params: {
+  refreshToken: string;
+}) {
+  const clientId = process.env.LINEAR_CLIENT_ID;
+  const clientSecret = process.env.LINEAR_CLIENT_SECRET;
+
+  if (!clientId || !clientSecret) {
+    throw new Error("Linear OAuth client credentials are missing");
+  }
+
+  const response = await fetch("https://api.linear.app/oauth/token", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/x-www-form-urlencoded",
+    },
+    body: new URLSearchParams({
+      grant_type: "refresh_token",
+      client_id: clientId,
+      client_secret: clientSecret,
+      refresh_token: params.refreshToken,
+    }).toString(),
+    cache: "no-store",
+  });
+
+  const rawBody = await response.text();
+  if (!response.ok) {
+    throw new Error(`Linear token refresh failed: ${response.status} - ${rawBody}`);
+  }
+
+  const payload = JSON.parse(rawBody) as {
+    access_token: string;
+    refresh_token?: string;
+    expires_in?: number;
+    scope?: string;
+  };
+
+  return payload;
+}
+
 export async function syncLinearFeatures({ userId, startDate, endDate }: SyncInput) {
   const [connection, notionConnection] = await Promise.all([
     prisma.connection.findUnique({
@@ -34,11 +73,43 @@ export async function syncLinearFeatures({ userId, startDate, endDate }: SyncInp
     throw new Error("Linear connection not found");
   }
 
-  const issues = await fetchCompletedIssues({
-    accessToken: connection.accessToken,
-    completedAtGte: new Date(startDate).toISOString(),
-    completedAtLte: new Date(endDate).toISOString(),
-  });
+  let issues;
+  try {
+    issues = await fetchCompletedIssues({
+      accessToken: connection.accessToken,
+      completedAtGte: new Date(startDate).toISOString(),
+      completedAtLte: new Date(endDate).toISOString(),
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Linear sync failed";
+    const isAuthFailure = message.includes("Linear request failed: 401");
+
+    if (!isAuthFailure || !connection.refreshToken) {
+      throw error;
+    }
+
+    const refreshed = await refreshLinearAccessToken({
+      refreshToken: connection.refreshToken,
+    });
+
+    await prisma.connection.update({
+      where: { id: connection.id },
+      data: {
+        accessToken: refreshed.access_token,
+        refreshToken: refreshed.refresh_token ?? connection.refreshToken,
+        scope: refreshed.scope ?? connection.scope,
+        expiresAt: refreshed.expires_in
+          ? new Date(Date.now() + refreshed.expires_in * 1000)
+          : null,
+      },
+    });
+
+    issues = await fetchCompletedIssues({
+      accessToken: refreshed.access_token,
+      completedAtGte: new Date(startDate).toISOString(),
+      completedAtLte: new Date(endDate).toISOString(),
+    });
+  }
 
   for (const issue of issues) {
     let notionPageId: string | null = null;

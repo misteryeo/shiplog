@@ -9,12 +9,14 @@ type OnboardingClientProps = {
   linearConnected: boolean;
   notionConnected: boolean;
   currentCadence: Cadence;
+  authError?: string;
 };
 
 export function OnboardingClient({
   linearConnected,
   notionConnected,
   currentCadence,
+  authError,
 }: OnboardingClientProps) {
   const [step, setStep] = useState(linearConnected ? 2 : 1);
   const [cadence, setCadence] = useState<Cadence>(currentCadence);
@@ -51,6 +53,15 @@ export function OnboardingClient({
     }
   }
 
+  const errorMessage =
+    authError === "Callback"
+      ? "Connection failed during OAuth callback. Check credentials and try again."
+      : authError === "OAuthCallback"
+        ? "OAuth callback was rejected by provider. Try reconnecting."
+        : authError
+          ? `Connection failed: ${authError}`
+          : null;
+
   return (
     <div className="mx-auto max-w-2xl space-y-6 py-12">
       <div>
@@ -59,6 +70,12 @@ export function OnboardingClient({
           Connect your tools and set your cadence to start generating weekly shipped updates.
         </p>
       </div>
+
+      {errorMessage ? (
+        <div className="rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+          {errorMessage}
+        </div>
+      ) : null}
 
       {step === 1 ? (
         <section className="rounded-xl border border-stone-200 bg-white p-6">
