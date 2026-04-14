@@ -16,12 +16,39 @@ type EditClientProps = {
   tone: Tone;
 };
 
+type CharacterTarget = {
+  min: number;
+  max: number;
+};
+
+const INDIVIDUAL_TARGET: CharacterTarget = {
+  min: 500,
+  max: 900,
+};
+
+function getBatchTarget(featureCount: number): CharacterTarget {
+  const min = Math.min(1400, Math.max(700, featureCount * 220));
+  const max = Math.min(2200, Math.max(1000, featureCount * 320));
+  return { min, max };
+}
+
+function enforceCharacterLimit(value: string, max: number) {
+  return value.length > max ? value.slice(0, max) : value;
+}
+
 export function EditClient({ features, mode, tone }: EditClientProps) {
-  const initialBatch = useMemo(() => buildBatchDraft(features, tone), [features, tone]);
+  const batchTarget = useMemo(() => getBatchTarget(features.length), [features.length]);
+  const initialBatch = useMemo(
+    () => enforceCharacterLimit(buildBatchDraft(features, tone), batchTarget.max),
+    [features, tone, batchTarget.max],
+  );
   const initialIndividual = useMemo(
     () =>
       Object.fromEntries(
-        features.map((feature) => [feature.id, buildIndividualDraft(feature, tone)]),
+        features.map((feature) => [
+          feature.id,
+          enforceCharacterLimit(buildIndividualDraft(feature, tone), INDIVIDUAL_TARGET.max),
+        ]),
       ),
     [features, tone],
   );
@@ -53,12 +80,15 @@ export function EditClient({ features, mode, tone }: EditClientProps) {
 
         <textarea
           value={batchDraft}
-          onChange={(event) => setBatchDraft(event.target.value)}
+          onChange={(event) => setBatchDraft(enforceCharacterLimit(event.target.value, batchTarget.max))}
+          maxLength={batchTarget.max}
           className="h-[420px] w-full rounded-xl border border-stone-300 bg-white p-4 text-sm text-stone-900"
         />
 
         <div className="flex items-center justify-between">
-          <span className="text-xs text-stone-500">{batchDraft.length} characters</span>
+          <span className="text-xs text-stone-500">
+            {batchDraft.length} characters (target {batchTarget.min}-{batchTarget.max})
+          </span>
           <div className="flex gap-2">
             <button
               type="button"
@@ -115,13 +145,18 @@ export function EditClient({ features, mode, tone }: EditClientProps) {
         onChange={(event) =>
           setIndividualDrafts((current) => ({
             ...current,
-            [currentFeature.id]: event.target.value,
+            [currentFeature.id]: enforceCharacterLimit(event.target.value, INDIVIDUAL_TARGET.max),
           }))
         }
+        maxLength={INDIVIDUAL_TARGET.max}
         className="h-[420px] w-full rounded-xl border border-stone-300 bg-white p-4 text-sm text-stone-900"
       />
 
       <div className="flex items-center justify-between">
+        <span className="text-xs text-stone-500">
+          {(individualDrafts[currentFeature.id] ?? "").length} characters (target{" "}
+          {INDIVIDUAL_TARGET.min}-{INDIVIDUAL_TARGET.max})
+        </span>
         <div className="flex gap-2">
           <button
             type="button"
@@ -147,7 +182,10 @@ export function EditClient({ features, mode, tone }: EditClientProps) {
             onClick={() =>
               setIndividualDrafts((current) => ({
                 ...current,
-                [currentFeature.id]: buildIndividualDraft(currentFeature, tone),
+                [currentFeature.id]: enforceCharacterLimit(
+                  buildIndividualDraft(currentFeature, tone),
+                  INDIVIDUAL_TARGET.max,
+                ),
               }))
             }
             className="rounded-md border border-stone-300 px-3 py-2 text-sm text-stone-700"

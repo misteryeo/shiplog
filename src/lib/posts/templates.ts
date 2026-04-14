@@ -18,29 +18,92 @@ function getToneIntro(tone: Tone) {
   return "New shipped updates from our team:";
 }
 
-function normalizeWhat(prData: unknown): string {
-  if (!Array.isArray(prData)) {
-    return "Implementation details are available in the linked pull requests.";
+function normalizeWhitespace(value: string) {
+  return value.replace(/\s+/g, " ").trim();
+}
+
+function cleanRichText(value: string) {
+  return normalizeWhitespace(
+    value
+      .replace(/```[\s\S]*?```/g, " ")
+      .replace(/`[^`]*`/g, " ")
+      .replace(/!\[[^\]]*\]\([^)]+\)/g, " ")
+      .replace(/\[[^\]]+\]\(([^)]+)\)/g, "$1")
+      .replace(/^#{1,6}\s*/gm, "")
+      .replace(/^\s*[-*+]\s+/gm, "")
+      .replace(/^\s*\d+\.\s+/gm, "")
+      .replace(/^\s*[-*]\s\[[ xX]\]\s*/gm, "")
+      .replace(/\*\*|__/g, "")
+      .replace(/\*|_/g, "")
+      .replace(/\r/g, " "),
+  );
+}
+
+function splitIntoSentences(value: string) {
+  return value
+    .split(/(?<=[.!?])\s+/)
+    .map((sentence) => normalizeWhitespace(sentence))
+    .filter(Boolean);
+}
+
+function firstSentence(value: string, fallback: string) {
+  const cleaned = cleanRichText(value);
+  if (!cleaned) return fallback;
+  const [sentence] = splitIntoSentences(cleaned);
+  return sentence || fallback;
+}
+
+function collectPRHighlights(prData: unknown) {
+  if (!Array.isArray(prData)) return [];
+
+  const highlights: string[] = [];
+  for (const item of prData) {
+    if (typeof item !== "object" || item === null) continue;
+    const body = "body" in item && typeof item.body === "string" ? item.body : "";
+    if (!body.trim()) continue;
+
+    const lines = body
+      .split("\n")
+      .map((line) => line.trim())
+      .filter((line) => Boolean(line) && !line.startsWith("##") && !line.startsWith("###"));
+
+    for (const line of lines) {
+      const cleaned = cleanRichText(line).replace(/^[-*+]\s*/, "");
+      if (cleaned && cleaned.length > 20) {
+        highlights.push(cleaned);
+      }
+      if (highlights.length >= 3) break;
+    }
+
+    if (highlights.length >= 3) break;
   }
 
-  const firstPR = prData.find(
-    (item) =>
-      typeof item === "object" &&
-      item !== null &&
-      "body" in item &&
-      typeof (item as Record<string, unknown>).body === "string",
-  ) as { body: string } | undefined;
+  return highlights;
+}
 
-  return firstPR?.body?.trim() || "Implementation details are available in the linked pull requests.";
+function buildCustomerSummary(feature: FeatureForDraft) {
+  const why = firstSentence(
+    feature.description ?? "",
+    "We heard this workflow could be smoother for customers.",
+  );
+  const prHighlights = collectPRHighlights(feature.prData);
+  const shipped = prHighlights[0]
+    ? firstSentence(prHighlights[0], "We shipped targeted improvements to this workflow.")
+    : "We shipped targeted improvements to this workflow.";
+  const impact = prHighlights[1]
+    ? firstSentence(prHighlights[1], "Customers should see faster, more reliable results.")
+    : "Customers should see faster, more reliable results.";
+
+  return { why, shipped, impact };
 }
 
 export function buildBatchDraft(features: FeatureForDraft[], tone: Tone) {
   const intro = getToneIntro(tone);
   const bullets = features
-    .map(
-      (feature) =>
-        `- ${feature.title}: ${feature.description?.trim() || "Customer-impact summary coming soon."}`,
-    )
+    .map((feature) => {
+      const { why, shipped } = buildCustomerSummary(feature);
+      return `- ${feature.title}: ${shipped} (${why})`;
+    })
     .join("\n");
 
   return `${intro}\n\n${bullets}\n\nIf one of these is relevant to your workflow, I would love your feedback.`;
@@ -54,8 +117,7 @@ export function buildIndividualDraft(feature: FeatureForDraft, tone: Tone) {
         ? `Feature breakdown: ${feature.title}.`
         : `Now shipped: ${feature.title}.`;
 
-  const why = feature.description?.trim() || "This shipped to remove friction for customers.";
-  const what = normalizeWhat(feature.prData);
+  const { why, shipped, impact } = buildCustomerSummary(feature);
 
-  return `${opening}\n\nWhy it matters:\n${why}\n\nWhat changed:\n${what}\n\nHow to try it:\nSee ${feature.identifier} for details.`;
+  return `${opening}\n\nThe challenge:\n${why}\n\nWhat we shipped:\n${shipped}\n\nWhat this means for customers:\n${impact}\n\nHow to try it:\nSee ${feature.identifier} for details.`;
 }
