@@ -8,16 +8,56 @@ import type { DraftMode, Tone } from "@/lib/posts/templates";
 type GenerateClientProps = {
   selectedCount: number;
   idsParam: string;
+  initialMode: DraftMode;
+  initialTone: Tone;
+  startDate: string | null;
+  endDate: string | null;
 };
 
-export function GenerateClient({ selectedCount, idsParam }: GenerateClientProps) {
-  const [mode, setMode] = useState<DraftMode>("batch");
-  const [tone, setTone] = useState<Tone>("storyteller");
+function appendWorkflowDates(
+  params: URLSearchParams,
+  startDate: string | null,
+  endDate: string | null,
+) {
+  if (startDate && endDate) {
+    params.set("start", startDate);
+    params.set("end", endDate);
+  }
+}
 
-  const nextHref = useMemo(
-    () => `/edit?ids=${idsParam}&mode=${mode}&tone=${tone}`,
-    [idsParam, mode, tone],
-  );
+export function GenerateClient({
+  selectedCount,
+  idsParam,
+  initialMode,
+  initialTone,
+  startDate,
+  endDate,
+}: GenerateClientProps) {
+  const [mode, setMode] = useState<DraftMode>(initialMode);
+  const [tone, setTone] = useState<Tone>(initialTone);
+
+  const nextHref = useMemo(() => {
+    const params = new URLSearchParams({
+      ids: idsParam,
+      mode,
+      tone,
+    });
+    appendWorkflowDates(params, startDate, endDate);
+    return `/edit?${params.toString()}`;
+  }, [idsParam, mode, tone, startDate, endDate]);
+
+  const backToReviewHref = useMemo(() => {
+    const params = new URLSearchParams();
+    if (startDate && endDate) {
+      params.set("start", startDate);
+      params.set("end", endDate);
+    }
+    if (idsParam) {
+      params.set("ids", idsParam);
+    }
+    const query = params.toString();
+    return query ? `/review?${query}` : "/review";
+  }, [startDate, endDate, idsParam]);
 
   return (
     <div className="mx-auto max-w-3xl space-y-6 py-8">
@@ -76,7 +116,13 @@ export function GenerateClient({ selectedCount, idsParam }: GenerateClientProps)
         </div>
       </section>
 
-      <div className="flex justify-end">
+      <div className="flex items-center justify-between gap-3">
+        <Link
+          href={backToReviewHref}
+          className="rounded-md border border-stone-300 px-4 py-2 text-sm text-stone-700 hover:bg-stone-50"
+        >
+          Back to review
+        </Link>
         <Link
           href={nextHref}
           className="rounded-md bg-stone-900 px-4 py-2 text-sm text-stone-50"

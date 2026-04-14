@@ -11,6 +11,8 @@ type EditPageProps = {
     ids?: string;
     mode?: DraftMode;
     tone?: Tone;
+    start?: string;
+    end?: string;
   };
 };
 
@@ -34,10 +36,20 @@ export default async function EditPage({ searchParams }: EditPageProps) {
   const features = ids.length ? await getFeaturesByIds(session.user.id, ids) : [];
   const mode = normalizeMode(searchParams.mode);
   const tone = normalizeTone(searchParams.tone);
+  const idsParam = searchParams.ids ?? "";
+  const startDate = searchParams.start ?? null;
+  const endDate = searchParams.end ?? null;
 
   return (
     <main className="mx-auto max-w-6xl px-4">
-      <EditClient features={features} mode={mode} tone={tone} />
+      <EditClient
+        features={features}
+        mode={mode}
+        tone={tone}
+        idsParam={idsParam}
+        startDate={startDate}
+        endDate={endDate}
+      />
     </main>
   );
 }

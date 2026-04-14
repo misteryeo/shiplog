@@ -9,6 +9,7 @@ type ReviewClientProps = {
   initialFeatures: Feature[];
   initialStartDate: string;
   initialEndDate: string;
+  initialSelectedIds?: string[];
   notionConnected: boolean;
 };
 
@@ -32,10 +33,11 @@ export function ReviewClient({
   initialFeatures,
   initialStartDate,
   initialEndDate,
+  initialSelectedIds = [],
   notionConnected,
 }: ReviewClientProps) {
   const [features, setFeatures] = useState(initialFeatures);
-  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [selectedIds, setSelectedIds] = useState<string[]>(initialSelectedIds);
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const [startDate, setStartDate] = useState(initialStartDate);
   const [endDate, setEndDate] = useState(initialEndDate);
@@ -84,7 +86,9 @@ export function ReviewClient({
         return;
       }
 
-      window.location.search = `?start=${startDate}&end=${endDate}`;
+      const idQuery =
+        selectedIds.length > 0 ? `&ids=${encodeURIComponent(selectedIds.join(","))}` : "";
+      window.location.search = `?start=${encodeURIComponent(startDate)}&end=${encodeURIComponent(endDate)}${idQuery}`;
     } finally {
       setSyncing(false);
     }
@@ -320,7 +324,11 @@ export function ReviewClient({
           <Link
             href={
               selectedIds.length
-                ? `/generate?ids=${selectedIds.join(",")}`
+                ? `/generate?${new URLSearchParams({
+                    ids: selectedIds.join(","),
+                    start: startDate,
+                    end: endDate,
+                  }).toString()}`
                 : "#"
             }
             className={`rounded-md px-3 py-2 text-sm ${

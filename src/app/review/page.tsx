@@ -12,6 +12,7 @@ type ReviewPageProps = {
   searchParams: {
     start?: string;
     end?: string;
+    ids?: string;
   };
 };
 
@@ -50,12 +51,17 @@ export default async function ReviewPage({ searchParams }: ReviewPageProps) {
   const endDate = searchParams.end ?? defaults.end;
   const features = await getFeaturesForRange(session.user.id, startDate, endDate);
 
+  const idsFromParam = searchParams.ids?.split(",").filter(Boolean) ?? [];
+  const featureIdSet = new Set(features.map((f) => f.id));
+  const initialSelectedIds = idsFromParam.filter((id) => featureIdSet.has(id));
+
   return (
     <main className="mx-auto max-w-6xl px-4 py-6">
       <ReviewClient
         initialFeatures={features}
         initialStartDate={startDate}
         initialEndDate={endDate}
+        initialSelectedIds={initialSelectedIds}
         notionConnected={Boolean(notionConnection)}
       />
     </main>

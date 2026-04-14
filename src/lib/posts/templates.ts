@@ -64,8 +64,10 @@ function collectPRHighlights(prData: unknown) {
 
     const lines = body
       .split("\n")
-      .map((line) => line.trim())
-      .filter((line) => Boolean(line) && !line.startsWith("##") && !line.startsWith("###"));
+      .map((line: string) => line.trim())
+      .filter(
+        (line: string) => Boolean(line) && !line.startsWith("##") && !line.startsWith("###"),
+      );
 
     for (const line of lines) {
       const cleaned = cleanRichText(line).replace(/^[-*+]\s*/, "");

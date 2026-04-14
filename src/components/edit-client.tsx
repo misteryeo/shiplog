@@ -1,6 +1,7 @@
 "use client";
 
 import type { Feature } from "@prisma/client";
+import Link from "next/link";
 import { useMemo, useState } from "react";
 
 import {
@@ -14,6 +15,9 @@ type EditClientProps = {
   features: Feature[];
   mode: DraftMode;
   tone: Tone;
+  idsParam: string;
+  startDate: string | null;
+  endDate: string | null;
 };
 
 type CharacterTarget = {
@@ -36,7 +40,26 @@ function enforceCharacterLimit(value: string, max: number) {
   return value.length > max ? value.slice(0, max) : value;
 }
 
-export function EditClient({ features, mode, tone }: EditClientProps) {
+export function EditClient({
+  features,
+  mode,
+  tone,
+  idsParam,
+  startDate,
+  endDate,
+}: EditClientProps) {
+  const backToGenerateHref = useMemo(() => {
+    const params = new URLSearchParams();
+    if (idsParam) params.set("ids", idsParam);
+    params.set("mode", mode);
+    params.set("tone", tone);
+    if (startDate && endDate) {
+      params.set("start", startDate);
+      params.set("end", endDate);
+    }
+    return `/generate?${params.toString()}`;
+  }, [idsParam, mode, tone, startDate, endDate]);
+
   const batchTarget = useMemo(() => getBatchTarget(features.length), [features.length]);
   const initialBatch = useMemo(
     () => enforceCharacterLimit(buildBatchDraft(features, tone), batchTarget.max),
@@ -71,6 +94,14 @@ export function EditClient({ features, mode, tone }: EditClientProps) {
   if (mode === "batch") {
     return (
       <div className="mx-auto max-w-4xl space-y-4 py-8">
+        <div>
+          <Link
+            href={backToGenerateHref}
+            className="text-sm text-violet-700 hover:text-violet-900 hover:underline"
+          >
+            ← Back to format &amp; selection
+          </Link>
+        </div>
         <div className="flex items-center justify-between">
           <h1 className="text-2xl font-semibold text-stone-900">Edit draft</h1>
           <span className="rounded-md border border-stone-300 px-2 py-1 text-xs capitalize text-stone-600">
@@ -111,11 +142,29 @@ export function EditClient({ features, mode, tone }: EditClientProps) {
   }
 
   if (!currentFeature) {
-    return <p className="py-8 text-sm text-stone-600">No features selected.</p>;
+    return (
+      <div className="mx-auto max-w-4xl space-y-4 py-8">
+        <Link
+          href={backToGenerateHref}
+          className="text-sm text-violet-700 hover:text-violet-900 hover:underline"
+        >
+          ← Back to format &amp; selection
+        </Link>
+        <p className="text-sm text-stone-600">No features selected.</p>
+      </div>
+    );
   }
 
   return (
     <div className="mx-auto max-w-4xl space-y-4 py-8">
+      <div>
+        <Link
+          href={backToGenerateHref}
+          className="text-sm text-violet-700 hover:text-violet-900 hover:underline"
+        >
+          ← Back to format &amp; selection
+        </Link>
+      </div>
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-semibold text-stone-900">Edit drafts</h1>
         <span className="rounded-md border border-stone-300 px-2 py-1 text-xs capitalize text-stone-600">
